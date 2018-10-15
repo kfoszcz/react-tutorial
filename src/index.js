@@ -4,7 +4,26 @@ import './index.css';
 
 function Square(props) {
 	return (
-		<button className="square" onClick={props.onClick}>
+		<button
+			className={'square ' + (props.highlight ? 'highlight' : '')}
+			onClick={props.onClick}
+		>
+			{props.value}
+		</button>
+	);
+}
+
+function MoveButton(props) {
+	return (
+		<button onClick={props.onClick}>
+			{(props.isCurrent) ? <b>{props.value}</b> : props.value}
+		</button>
+	);
+}
+
+function ToggleButton(props) {
+	return (
+		<button onClick={props.onClick} className="toggle">
 			{props.value}
 		</button>
 	);
@@ -13,32 +32,26 @@ function Square(props) {
 class Board extends React.Component {
 	renderSquare(i) {
 		return (
-			<Square 
+			<Square
+				key={i}
 				value={this.props.squares[i]}
 				onClick={() => this.props.onClick(i)}
+				highlight={(this.props.highlight.includes(i))}
 			/>
 		);
 	}
 
 	render() {
+		const rows = [];
+		for (let i = 0; i < 3; i++) {
+			let cells = [];
+			for (let j = 0; j < 3; j++) {
+				cells.push(this.renderSquare(3 * i + j));
+			}
+			rows.push(<div className="board-row" key={i}>{cells}</div>);
+		}
 		return (
-			<div>
-				<div className="board-row">
-					{this.renderSquare(0)}
-					{this.renderSquare(1)}
-					{this.renderSquare(2)}
-				</div>
-				<div className="board-row">
-					{this.renderSquare(3)}
-					{this.renderSquare(4)}
-					{this.renderSquare(5)}
-				</div>
-				<div className="board-row">
-					{this.renderSquare(6)}
-					{this.renderSquare(7)}
-					{this.renderSquare(8)}
-				</div>
-			</div>
+			<div>{rows}</div>
 		);
 	}
 }
@@ -48,10 +61,12 @@ class Game extends React.Component {
 		super(props);
 		this.state = {
 			history: [{
-				squares: Array(9).fill(null)
+				squares: Array(9).fill(null),
+				lastMove: null
 			}],
 			xIsNext: true,
-			stepNumber: 0
+			stepNumber: 0,
+			movesAscending: true
 		}
 	}
 
@@ -65,7 +80,8 @@ class Game extends React.Component {
 		squares[i] = this.state.xIsNext ? 'X' : 'O';
 		this.setState({
 			history: history.concat([{
-				squares: squares
+				squares: squares,
+				lastMove: i
 			}]),
 			xIsNext: !this.state.xIsNext,
 			stepNumber: this.state.stepNumber + 1
@@ -79,28 +95,48 @@ class Game extends React.Component {
 		});
 	}
 
+	toggleMoveOrder() {
+		this.setState({
+			movesAscending: !this.state.movesAscending
+		});
+	}
+
 	render() {
 		const history = this.state.history;
 		const current = history[this.state.stepNumber];
 		const winner = calculateWinner(current.squares);
 
 		const moves = history.map((step, move) => {
-			const desc = move ?
-				'Go to move #' + move :
-				'Go to game start';
+			let desc;
+			if (move) {
+				const coordinates = numberToRowCol(step.lastMove);
+				desc = `Go to move #${move}: (${coordinates.col}, ${coordinates.row})`;
+			}
+			else {
+				desc = 'Go to game start';
+			}
 			return (
 				<li key={move}>
-					<button onClick={() => this.jumpTo(move)}>{desc}</button>
+					<MoveButton
+						onClick={() => this.jumpTo(move)}
+						value={desc}
+						isCurrent={move === this.state.stepNumber}
+					/>
 				</li>
 			);
 		});
 
-		let status;
+		if (!this.state.movesAscending)
+			moves.reverse();
+
+		let status, line;
 		if (winner) {
-			status = 'Winner: ' + winner;
+			status = 'Winner: ' + winner.winner;
+			line = winner.line;
 		}
 		else {
 			status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+			line = [];
 		}
 
 		return (
@@ -108,11 +144,16 @@ class Game extends React.Component {
 				<div className="game-board">
 					<Board 
 						squares={current.squares}
+						highlight={line}
 						onClick={i => this.handleClick(i)}
 					/>
 				</div>
 				<div className="game-info">
 					<div>{status}</div>
+					<ToggleButton
+						value={'Sort moves ' + (this.state.movesAscending ? 'descending' : 'ascending')}
+						onClick={() => this.toggleMoveOrder()}
+					/>
 					<ol>{moves}</ol>
 				</div>
 			</div>
@@ -141,7 +182,10 @@ function calculateWinner(squares) {
 	for (let i = 0; i < lines.length; i++) {
 		const [a, b, c] = lines[i];
 		if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-			return squares[a];
+			return {
+				winner: squares[a],
+				line: lines[i]
+			};
 		}
 	}
 	for (let i = 0; i < squares.length; i++) {
@@ -149,5 +193,15 @@ function calculateWinner(squares) {
 			return null;
 		}
 	}
-	return 'draw';
+	return {
+		winner: 'draw',
+		line: []
+	};
+}
+
+function numberToRowCol(number) {
+	return {
+		row: Math.floor(number / 3) + 1,
+		col: number % 3 + 1
+	};
 }

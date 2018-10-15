@@ -7,6 +7,10 @@ ol, ul {
   padding-left: 30px;
 }
 
+li {
+  margin-top: 10px;
+}
+
 .board-row:after {
   clear: both;
   content: "";
@@ -41,6 +45,10 @@ ol, ul {
 	background: #ddd;
 }
 
+.square.highlight {
+  background: #54ff8d;
+}
+
 .kbd-navigation .square:focus {
   background: #ddd;
 }
@@ -52,4 +60,8 @@ ol, ul {
 
 .game-info {
   margin-left: 20px;
+}
+
+button.toggle {
+  margin-top: 10px;
 }
